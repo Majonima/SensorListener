@@ -17,12 +17,22 @@ import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.os.BatteryManager;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -31,6 +41,8 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import static android.os.BatteryManager.BATTERY_PLUGGED_USB;
+
+
 
 public class MainActivity extends AppCompatActivity {
     private SensorManager msensorManager;
@@ -104,8 +116,6 @@ public class MainActivity extends AppCompatActivity {
         alertDate = new Date();
         alertFormat = new SimpleDateFormat("dd.MM.yyyy hh:mm:ss");
         alertTable = new HashMap<>();
-
-
         setContentView(R.layout.activity_main);
 
         xyView = (TextView) findViewById(R.id.xyValue);
@@ -145,6 +155,10 @@ public class MainActivity extends AppCompatActivity {
         super.onPause();
         msensorManager.unregisterListener(sensorEventListener);
         unregisterReceiver(this.PowerConnectionReceiver);
+    }
+    public void onclick(View v) {
+        writeFile("alertTable.txt","alert");
+
     }
 
     private LocationListener locationListener = new LocationListener() {
@@ -260,4 +274,92 @@ public class MainActivity extends AppCompatActivity {
 
         }
     };
+
+
+
+
+    void writeFile(String FILENAME_SD, String DIR_SD) {
+        // проверяем доступность SD
+        if (!Environment.getExternalStorageState().equals(
+                Environment.MEDIA_MOUNTED)) {
+            Log.v("write", "SD-карта не доступна: " + Environment.getExternalStorageState());
+            return;
+        }
+        // получаем путь к SD
+        File sdPath = Environment.getExternalStorageDirectory();
+
+        // добавляем свой каталог к пути
+        sdPath = new File(sdPath.getAbsolutePath() + "/" + DIR_SD);
+        // создаем каталог
+        sdPath.mkdirs();
+        // формируем объект File, который содержит путь к файлу
+        File sdFile = new File(sdPath, FILENAME_SD);
+        if(sdFile.exists()){
+            try {
+                // отрываем поток для записи
+                BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(
+                        openFileOutput(FILENAME_SD, MODE_PRIVATE)));
+                // пишем данные
+                for (Map.Entry entry : alertTable.entrySet()) {
+                    Log.v("write","Key: " + entry.getKey() + " Value: " + entry.getValue());
+
+                    bw.write(entry.getKey() + " " + entry.getValue());
+                }
+                alertTable.clear();
+                // закрываем поток
+                bw.close();
+                Log.v("write", "Файл записан");
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }else {
+            try {
+                // открываем поток для записи
+                BufferedWriter bw = new BufferedWriter(new FileWriter(sdFile));
+                // пишем данные
+                for (Map.Entry entry : alertTable.entrySet()) {
+                    Log.v("write","Key: " + entry.getKey() + " Value: " + entry.getValue());
+
+                    bw.write(entry.getKey() + " " + entry.getValue());
+                }
+                alertTable.clear();
+
+                // закрываем поток
+                bw.close();
+                Log.v("write", "Файл записан на SD: " + sdFile.getAbsolutePath());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    void readFileSD(String FILENAME_SD, String DIR_SD) {
+        // проверяем доступность SD
+        if (!Environment.getExternalStorageState().equals(
+                Environment.MEDIA_MOUNTED)) {
+            Log.d("write", "SD-карта не доступна: " + Environment.getExternalStorageState());
+            return;
+        }
+        // получаем путь к SD
+        File sdPath = Environment.getExternalStorageDirectory();
+        // добавляем свой каталог к пути
+        sdPath = new File(sdPath.getAbsolutePath() + "/" + DIR_SD);
+        // формируем объект File, который содержит путь к файлу
+        File sdFile = new File(sdPath, FILENAME_SD);
+        try {
+            // открываем поток для чтения
+            BufferedReader br = new BufferedReader(new FileReader(sdFile));
+            String str = "";
+            // читаем содержимое
+            while ((str = br.readLine()) != null) {
+                Log.d("write", str);
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }
